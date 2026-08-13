@@ -13,11 +13,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libglfw3-dev libvulkan-dev vulkan-tools
-
-    - name: Clone Dear ImGui
-      run: |
-        git clone --depth 1 https://github.com/ocornut/imgui.git imgui_src
+        sudo apt-get install -y libglfw3-dev libvulkan-dev vulkan-tools libxi-dev libxrandr-dev libxinerama-dev libxcursor-dev
 
     - name: Compile
       run: |
