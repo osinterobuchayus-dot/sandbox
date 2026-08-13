@@ -1,20 +1,21 @@
-name: Build Windows EXE
+name: Build C++ Project
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Compile
-        run: g++ *.cpp -o sandbox.exe -static-libgcc -static-libstdc++
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libglfw3-dev libvulkan-dev vulkan-tools
 
-      - name: Upload EXE
-        uses: actions/upload-artifact@v4
-        with:
-          name: my-game-exe
-          path: sandbox.exe
-          
+    - name: Compile
+      run: |
+        g++ *.cpp -o sandbox.exe -lglfw -lvulkan -ldl -lpthread -lX11 -lXrandr -lXi -static-libgcc -static-libstdc++
+        
