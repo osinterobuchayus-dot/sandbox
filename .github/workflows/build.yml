@@ -1,4 +1,5 @@
-name: Build C++ Project
+
+name: Build Windows EXE
 
 on: [push, pull_request]
 
@@ -10,18 +11,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install MinGW and Tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y libglfw3-dev libvulkan-dev vulkan-tools libxi-dev libxrandr-dev libxinerama-dev libxcursor-dev
+        sudo apt-get install -y mingw-w64 unzip curl
 
     - name: Clone Dear ImGui
       run: |
         git clone --depth 1 https://github.com/ocornut/imgui.git imgui_src
 
-    - name: Compile
+    - name: Download GLFW for Windows
       run: |
-        g++ main.cpp gui.cpp \
+        curl -L https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN64.zip -o glfw.zip
+        unzip -q glfw.zip
+
+    - name: Compile for Windows
+      run: |
+        x86_64-w64-mingw32-g++ main.cpp gui.cpp \
             imgui_src/imgui.cpp \
             imgui_src/imgui_draw.cpp \
             imgui_src/imgui_tables.cpp \
@@ -30,8 +36,10 @@ jobs:
             imgui_src/backends/imgui_impl_vulkan.cpp \
             -Iimgui_src \
             -Iimgui_src/backends \
+            -Iglfw-3.4.bin.WIN64/include \
+            -Lglfw-3.4.bin.WIN64/lib-mingw-w64 \
             -o sandbox.exe \
-            -lglfw -lvulkan -ldl -lpthread -lX11 -lXrandr -lXi \
+            -lglfw3 -lgdi32 -lopengl32 -limm32 \
             -static-libgcc -static-libstdc++
 
     - name: Upload EXE
