@@ -1,50 +1,37 @@
-# .github/workflows/build.yml
-name: Build Windows EXE (OpenGL)
+name: Build Sandbox
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
-  build:
+  build-windows:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v3
 
-    - name: Install MinGW and Tools
+    - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y mingw-w64 unzip curl
+        sudo apt-get install -y mingw-w64 cmake make g++
 
-    - name: Clone Dear ImGui
+    - name: Configure CMake (MinGW Windows)
       run: |
-        git clone --depth 1 https://github.com/ocornut/imgui.git imgui_src
+        mkdir build && cd build
+        cmake -DCMAKE_SYSTEM_NAME=Windows \
+              -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
+              -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+              ..
 
-    - name: Download GLFW for Windows
-      run: |
-        curl -L https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN64.zip -o glfw.zip
-        unzip -q glfw.zip
+    - name: Build Project
+      run: cmake --build build --config Release
 
-    - name: Compile for Windows (OpenGL)
-      run: |
-        x86_64-w64-mingw32-g++ main.cpp gui.cpp \
-            imgui_src/imgui.cpp \
-            imgui_src/imgui_draw.cpp \
-            imgui_src/imgui_tables.cpp \
-            imgui_src/imgui_widgets.cpp \
-            imgui_src/backends/imgui_impl_glfw.cpp \
-            imgui_src/backends/imgui_impl_opengl3.cpp \
-            -Iimgui_src \
-            -Iimgui_src/backends \
-            -Iglfw-3.4.bin.WIN64/include \
-            glfw-3.4.bin.WIN64/lib-mingw-w64/libglfw3.a \
-            -o sandbox.exe \
-            -lgdi32 -lopengl32 -limm32 -lole32 -luuid \
-            -static-libgcc -static-libstdc++
-
-    - name: Upload EXE
-      uses: actions/upload-artifact@v4
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
       with:
-        name: sandbox-executable
-        path: sandbox.exe
+        name: pixel-sandbox-windows
+        path: build/pixelsandbox.exe
         
