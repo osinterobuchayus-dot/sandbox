@@ -15,7 +15,22 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libglfw3-dev libvulkan-dev vulkan-tools
 
+    - name: Clone Dear ImGui
+      run: |
+        git clone --depth 1 https://github.com/ocornut/imgui.git imgui_src
+
     - name: Compile
       run: |
-        g++ *.cpp -o sandbox.exe -lglfw -lvulkan -ldl -lpthread -lX11 -lXrandr -lXi -static-libgcc -static-libstdc++
-        
+        g++ main.cpp gui.cpp \
+            imgui_src/imgui.cpp \
+            imgui_src/imgui_draw.cpp \
+            imgui_src/imgui_tables.cpp \
+            imgui_src/imgui_widgets.cpp \
+            imgui_src/backends/imgui_impl_glfw.cpp \
+            imgui_src/backends/imgui_impl_vulkan.cpp \
+            -Iimgui_src \
+            -Iimgui_src/backends \
+            -o sandbox.exe \
+            -lglfw -lvulkan -ldl -lpthread -lX11 -lXrandr -lXi \
+            -static-libgcc -static-libstdc++
+            
