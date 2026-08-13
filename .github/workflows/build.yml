@@ -27,6 +27,13 @@ jobs:
 
     - name: Compile for Windows
       run: |
+        # Автоматический поиск путей к GLFW, чтобы избежать ошибок с регистром
+        GLFW_LIB=$(find . -name "libglfw3.a" | head -n 1)
+        GLFW_INC=$(find . -type d -name "include" | grep glfw | head -n 1)
+        
+        echo "Found GLFW lib: $GLFW_LIB"
+        echo "Found GLFW inc: $GLFW_INC"
+
         x86_64-w64-mingw32-g++ main.cpp gui.cpp \
             imgui_src/imgui.cpp \
             imgui_src/imgui_draw.cpp \
@@ -36,9 +43,9 @@ jobs:
             imgui_src/backends/imgui_impl_vulkan.cpp \
             -Iimgui_src \
             -Iimgui_src/backends \
-            -Iglfw-3.4.bin.WIN64/include \
+            -I"$GLFW_INC" \
             -Ivulkan_headers/include \
-            glfw-3.4.bin.WIN64/lib-mingw-w64/libglfw3.a \
+            "$GLFW_LIB" \
             -o sandbox.exe \
             -lgdi32 -lopengl32 -limm32 -lole32 -luuid \
             -static-libgcc -static-libstdc++
