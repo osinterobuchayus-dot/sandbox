@@ -1,4 +1,3 @@
-// main.cpp
 #include <GLFW/glfw3.h>
 #include <iostream>
 
@@ -20,8 +19,10 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     GLFWwindow* window = glfwCreateWindow(1280, 720, "Pixel Sandbox", nullptr, nullptr);
-    if (window == nullptr)
+    if (window == nullptr) {
+        glfwTerminate();
         return 1;
+    }
         
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
