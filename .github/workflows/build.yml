@@ -38,8 +38,9 @@ jobs:
             -Iimgui_src/backends \
             -Iglfw-3.4.bin.WIN64/include \
             -Ivulkan_headers/include \
+            glfw-3.4.bin.WIN64/lib-mingw-w64/libglfw3.a \
             -o sandbox.exe \
-            -lglfw3 -lgdi32 -lopengl32 -limm32 \
+            -lgdi32 -lopengl32 -limm32 -lole32 -luuid \
             -static-libgcc -static-libstdc++
 
     - name: Upload EXE
