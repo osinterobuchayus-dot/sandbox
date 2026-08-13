@@ -1,4 +1,3 @@
-// gui.cpp
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
@@ -7,8 +6,8 @@
 #include <cstdlib>
 #include <cstdio>
 
-const int GRID_W = 140;
-const int GRID_H = 90;
+const int GRID_W = 160;
+const int GRID_H = 100;
 
 enum Element {
     EMPTY = 0,
@@ -158,7 +157,6 @@ void RenderGUI() {
 
     UpdateSandbox();
 
-    // На весь экран подгоняется главное бесшовное окно
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -170,10 +168,9 @@ void RenderGUI() {
 
     ImGui::Begin("PixelSandboxMain", nullptr, window_flags);
 
-    // Верхняя мини-панель (меню и FPS)
     if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Menu")) {
-            if (ImGui::MenuItem("Clear All")) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Clear Grid")) {
                 ClearGrid();
             }
             ImGui::EndMenu();
@@ -183,29 +180,31 @@ void RenderGUI() {
     }
 
     ImVec2 region = ImGui::GetContentRegionAvail();
-    float toolbarHeight = 115.0f;
+    float toolbarHeight = 110.0f;
     ImVec2 canvasSize(region.x, region.y - toolbarHeight);
 
-    // 1. Игровая область (Холст песочницы)
     ImVec2 canvasPos = ImGui::GetCursorScreenPos();
     ImDrawList* drawList = ImGui::GetWindowDrawList();
-    drawList->AddRectFilled(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y), IM_COL32(15, 15, 15, 255));
+    drawList->AddRectFilled(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y), IM_COL32(18, 18, 18, 255));
 
     float cellW = canvasSize.x / GRID_W;
     float cellH = canvasSize.y / GRID_H;
 
-    if (ImGui::IsWindowHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetMousePos().y < canvasPos.y + canvasSize.y) {
+    if (ImGui::IsWindowHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
         ImVec2 mousePos = ImGui::GetMousePos();
-        int mouseX = (int)((mousePos.x - canvasPos.x) / cellW);
-        int mouseY = (int)((mousePos.y - canvasPos.y) / cellH);
+        if (mousePos.x >= canvasPos.x && mousePos.x < canvasPos.x + canvasSize.x &&
+            mousePos.y >= canvasPos.y && mousePos.y < canvasPos.y + canvasSize.y) {
+            int mouseX = (int)((mousePos.x - canvasPos.x) / cellW);
+            int mouseY = (int)((mousePos.y - canvasPos.y) / cellH);
 
-        for (int dy = -brushSize; dy <= brushSize; ++dy) {
-            for (int dx = -brushSize; dx <= brushSize; ++dx) {
-                int tx = mouseX + dx;
-                int ty = mouseY + dy;
-                if (tx >= 0 && tx < GRID_W && ty >= 0 && ty < GRID_H) {
-                    if (dx*dx + dy*dy <= brushSize * brushSize + 1) {
-                        grid[ty * GRID_W + tx] = currentElement;
+            for (int dy = -brushSize; dy <= brushSize; ++dy) {
+                for (int dx = -brushSize; dx <= brushSize; ++dx) {
+                    int tx = mouseX + dx;
+                    int ty = mouseY + dy;
+                    if (tx >= 0 && tx < GRID_W && ty >= 0 && ty < GRID_H) {
+                        if (dx*dx + dy*dy <= brushSize * brushSize + 1) {
+                            grid[ty * GRID_W + tx] = currentElement;
+                        }
                     }
                 }
             }
@@ -219,15 +218,15 @@ void RenderGUI() {
 
             ImU32 color = IM_COL32(0, 0, 0, 255);
             switch (type) {
-                case SAND:  color = IM_COL32(220, 190, 80, 255); break;
-                case WATER: color = IM_COL32(50, 120, 240, 255); break;
-                case STONE: color = IM_COL32(130, 130, 130, 255); break;
-                case METAL: color = IM_COL32(180, 185, 200, 255); break;
-                case WOOD:  color = IM_COL32(140, 90, 40, 255); break;
-                case OIL:   color = IM_COL32(90, 80, 50, 255); break;
-                case ACID:  color = IM_COL32(50, 230, 50, 255); break;
-                case ICE:   color = IM_COL32(180, 230, 245, 255); break;
-                case FIRE:  color = IM_COL32(245, 100, 20, 255); break;
+                case SAND:  color = IM_COL32(225, 195, 80, 255); break;
+                case WATER: color = IM_COL32(50, 130, 250, 255); break;
+                case STONE: color = IM_COL32(120, 120, 120, 255); break;
+                case METAL: color = IM_COL32(170, 175, 190, 255); break;
+                case WOOD:  color = IM_COL32(135, 85, 40, 255); break;
+                case OIL:   color = IM_COL32(85, 75, 45, 255); break;
+                case ACID:  color = IM_COL32(40, 240, 40, 255); break;
+                case ICE:   color = IM_COL32(175, 225, 245, 255); break;
+                case FIRE:  color = IM_COL32(250, 95, 15, 255); break;
             }
 
             ImVec2 pMin(canvasPos.x + x * cellW, canvasPos.y + y * cellH);
@@ -237,16 +236,16 @@ void RenderGUI() {
     }
 
     ImGui::Dummy(canvasSize);
-
     ImGui::Spacing();
 
-    // 2. Нижняя панель инструментов и палитра материалов
     ImGui::BeginChild("BottomToolbar", ImVec2(0, 0), true);
     
-    ImGui::SetNextItemWidth(150.0f);
+    ImGui::SetNextItemWidth(180.0f);
     ImGui::SliderInt("Brush Size", &brushSize, 1, 6);
-    ImGui::SameLine(280);
-    if (ImGui::Button("Clear All Fields", ImVec2(130, 32))) {
+    ImGui::SameLine();
+    ImGui::Spacing();
+    ImGui::SameLine();
+    if (ImGui::Button("Clear All Fields", ImVec2(140, 28))) {
         ClearGrid();
     }
 
@@ -259,41 +258,40 @@ void RenderGUI() {
     };
 
     MaterialInfo materials[] = {
-        { "Eraser", EMPTY, ImVec4(0.2f, 0.2f, 0.2f, 1.0f) },
-        { "Sand", SAND, ImVec4(0.86f, 0.75f, 0.31f, 1.0f) },
-        { "Water", WATER, ImVec4(0.2f, 0.5f, 0.94f, 1.0f) },
+        { "Eraser", EMPTY, ImVec4(0.25f, 0.25f, 0.25f, 1.0f) },
+        { "Sand", SAND, ImVec4(0.88f, 0.76f, 0.32f, 1.0f) },
+        { "Water", WATER, ImVec4(0.2f, 0.5f, 0.98f, 1.0f) },
         { "Stone", STONE, ImVec4(0.5f, 0.5f, 0.5f, 1.0f) },
-        { "Metal", METAL, ImVec4(0.7f, 0.73f, 0.78f, 1.0f) },
+        { "Metal", METAL, ImVec4(0.72f, 0.75f, 0.8f, 1.0f) },
         { "Wood", WOOD, ImVec4(0.55f, 0.35f, 0.17f, 1.0f) },
         { "Oil", OIL, ImVec4(0.35f, 0.3f, 0.2f, 1.0f) },
-        { "Acid", ACID, ImVec4(0.2f, 0.9f, 0.2f, 1.0f) },
+        { "Acid", ACID, ImVec4(0.2f, 0.92f, 0.2f, 1.0f) },
         { "Ice", ICE, ImVec4(0.7f, 0.9f, 0.95f, 1.0f) },
-        { "Fire", FIRE, ImVec4(0.95f, 0.4f, 0.1f, 1.0f) }
+        { "Fire", FIRE, ImVec4(0.96f, 0.4f, 0.1f, 1.0f) }
     };
 
     int i = 0;
     for (auto& mat : materials) {
         bool isSelected = (currentElement == mat.id);
         ImGui::PushStyleColor(ImGuiCol_Button, mat.color);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(mat.color.x * 1.2f, mat.color.y * 1.2f, mat.color.z * 1.2f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(mat.color.x * 0.8f, mat.color.y * 0.8f, mat.color.z * 0.8f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(mat.color.x * 1.15f, mat.color.y * 1.15f, mat.color.z * 1.15f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(mat.color.x * 0.85f, mat.color.y * 0.85f, mat.color.z * 0.85f, 1.0f));
 
         char label[64];
         snprintf(label, sizeof(label), "%s%s", mat.name, isSelected ? " [X]" : "");
 
-        if (ImGui::Button(label, ImVec2(85, 30))) {
+        if (ImGui::Button(label, ImVec2(90, 28))) {
             currentElement = mat.id;
         }
         ImGui::PopStyleColor(3);
 
-        if (i < 9) {
+        if ((i + 1) % 10 != 0) {
             ImGui::SameLine();
         }
         i++;
     }
 
     ImGui::EndChild();
-
     ImGui::End();
 
     ImGui::Render();
