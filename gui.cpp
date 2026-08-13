@@ -5,19 +5,27 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <cstdlib>
+#include <cstdio>
 
-const int GRID_W = 120;
-const int GRID_H = 80;
+const int GRID_W = 140;
+const int GRID_H = 90;
 
 enum Element {
     EMPTY = 0,
-    SAND = 1,
-    WATER = 2,
-    STONE = 3
+    SAND,
+    WATER,
+    STONE,
+    METAL,
+    WOOD,
+    OIL,
+    ACID,
+    ICE,
+    FIRE
 };
 
 static std::vector<int> grid(GRID_W * GRID_H, EMPTY);
 static int currentElement = SAND;
+static int brushSize = 2;
 
 void ClearGrid() {
     std::fill(grid.begin(), grid.end(), EMPTY);
@@ -27,20 +35,25 @@ void UpdateSandbox() {
     std::vector<int> newGrid = grid;
 
     for (int y = GRID_H - 1; y >= 0; --y) {
-        for (int x = 0; x < GRID_W; ++x) {
+        for (int x_iter = 0; x_iter < GRID_W; ++x_iter) {
+            int x = (y % 2 == 0) ? x_iter : (GRID_W - 1 - x_iter);
             int idx = y * GRID_W + x;
             int type = grid[idx];
 
+            if (type == EMPTY || type == STONE || type == METAL) continue;
+
             if (type == SAND) {
                 if (y + 1 < GRID_H) {
-                    int belowIdx = (y + 1) * GRID_W + x;
-                    if (grid[belowIdx] == EMPTY || grid[belowIdx] == WATER) {
-                        newGrid[idx] = newGrid[belowIdx];
-                        newGrid[belowIdx] = SAND;
+                    int below = grid[(y + 1) * GRID_W + x];
+                    if (below == EMPTY) {
+                        newGrid[idx] = EMPTY;
+                        newGrid[(y + 1) * GRID_W + x] = SAND;
+                    } else if (below == WATER || below == OIL) {
+                        newGrid[idx] = below;
+                        newGrid[(y + 1) * GRID_W + x] = SAND;
                     } else {
                         bool leftOk = (x > 0 && grid[(y + 1) * GRID_W + (x - 1)] == EMPTY);
                         bool rightOk = (x < GRID_W - 1 && grid[(y + 1) * GRID_W + (x + 1)] == EMPTY);
-
                         if (leftOk && rightOk) {
                             int dir = (rand() % 2 == 0) ? -1 : 1;
                             newGrid[idx] = EMPTY;
@@ -54,18 +67,62 @@ void UpdateSandbox() {
                         }
                     }
                 }
-            } else if (type == WATER) {
+            } else if (type == WATER || type == ACID) {
                 if (y + 1 < GRID_H && grid[(y + 1) * GRID_W + x] == EMPTY) {
                     newGrid[idx] = EMPTY;
-                    newGrid[(y + 1) * GRID_W + x] = WATER;
+                    newGrid[(y + 1) * GRID_W + x] = type;
                 } else {
-                    int dir = (rand() % 2 == 0) ? -1 : 1;
-                    if (x + dir >= 0 && x + dir < GRID_W && grid[y * GRID_W + (x + dir)] == EMPTY) {
+                    bool leftOk = (x > 0 && grid[(y + 1) * GRID_W + (x - 1)] == EMPTY);
+                    bool rightOk = (x < GRID_W - 1 && grid[(y + 1) * GRID_W + (x + 1)] == EMPTY);
+                    if (leftOk && rightOk) {
+                        int dir = (rand() % 2 == 0) ? -1 : 1;
                         newGrid[idx] = EMPTY;
-                        newGrid[y * GRID_W + (x + dir)] = WATER;
-                    } else if (x - dir >= 0 && x - dir < GRID_W && grid[y * GRID_W + (x - dir)] == EMPTY) {
+                        newGrid[(y + 1) * GRID_W + (x + dir)] = type;
+                    } else if (leftOk) {
                         newGrid[idx] = EMPTY;
-                        newGrid[y * GRID_W + (x - dir)] = WATER;
+                        newGrid[(y + 1) * GRID_W + (x - 1)] = type;
+                    } else if (rightOk) {
+                        newGrid[idx] = EMPTY;
+                        newGrid[(y + 1) * GRID_W + (x + 1)] = type;
+                    } else {
+                        int dir = (rand() % 2 == 0) ? -1 : 1;
+                        if (x + dir >= 0 && x + dir < GRID_W && grid[y * GRID_W + (x + dir)] == EMPTY) {
+                            newGrid[idx] = EMPTY;
+                            newGrid[y * GRID_W + (x + dir)] = type;
+                        } else if (x - dir >= 0 && x - dir < GRID_W && grid[y * GRID_W + (x - dir)] == EMPTY) {
+                            newGrid[idx] = EMPTY;
+                            newGrid[y * GRID_W + (x - dir)] = type;
+                        }
+                    }
+                }
+            } else if (type == OIL) {
+                if (y + 1 < GRID_H) {
+                    int below = grid[(y + 1) * GRID_W + x];
+                    if (below == EMPTY || below == WATER) {
+                        newGrid[idx] = below;
+                        newGrid[(y + 1) * GRID_W + x] = OIL;
+                    } else {
+                        int dir = (rand() % 2 == 0) ? -1 : 1;
+                        if (x + dir >= 0 && x + dir < GRID_W && grid[y * GRID_W + (x + dir)] == EMPTY) {
+                            newGrid[idx] = EMPTY;
+                            newGrid[y * GRID_W + (x + dir)] = OIL;
+                        }
+                    }
+                }
+            } else if (type == FIRE) {
+                if (rand() % 3 == 0) {
+                    newGrid[idx] = EMPTY;
+                } else {
+                    int nx = x + (rand() % 3 - 1);
+                    int ny = y - 1;
+                    if (nx >= 0 && nx < GRID_W && ny >= 0) {
+                        int target = grid[ny * GRID_W + nx];
+                        if (target == WOOD || target == OIL) {
+                            newGrid[ny * GRID_W + nx] = FIRE;
+                        } else if (target == EMPTY) {
+                            newGrid[idx] = EMPTY;
+                            newGrid[ny * GRID_W + nx] = FIRE;
+                        }
                     }
                 }
             }
@@ -82,6 +139,10 @@ bool InitGUI(GLFWwindow* window) {
 
     ImGui::StyleColorsDark();
 
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 0.0f;
+    style.FrameRounding = 3.0f;
+
     if (!ImGui_ImplGlfw_InitForOpenGL(window, true))
         return false;
     if (!ImGui_ImplOpenGL3_Init("#version 330"))
@@ -97,45 +158,55 @@ void RenderGUI() {
 
     UpdateSandbox();
 
-    ImGui::Begin("Sandbox Panel");
-    ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-    ImGui::Separator();
-    
-    ImGui::RadioButton("Песок (Sand)", &currentElement, SAND);
-    ImGui::RadioButton("Вода (Water)", &currentElement, WATER);
-    ImGui::RadioButton("Камень (Stone)", &currentElement, STONE);
-    ImGui::RadioButton("Ластик (Eraser)", &currentElement, EMPTY);
+    // На весь экран подгоняется главное бесшовное окно
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
 
-    if (ImGui::Button("Очистить поле")) {
-        ClearGrid();
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                    ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_MenuBar;
+
+    ImGui::Begin("PixelSandboxMain", nullptr, window_flags);
+
+    // Верхняя мини-панель (меню и FPS)
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Menu")) {
+            if (ImGui::MenuItem("Clear All")) {
+                ClearGrid();
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::Text(" | FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::EndMenuBar();
     }
-    ImGui::End();
 
-    ImGui::Begin("Sandbox Area", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-    
+    ImVec2 region = ImGui::GetContentRegionAvail();
+    float toolbarHeight = 115.0f;
+    ImVec2 canvasSize(region.x, region.y - toolbarHeight);
+
+    // 1. Игровая область (Холст песочницы)
     ImVec2 canvasPos = ImGui::GetCursorScreenPos();
-    ImVec2 canvasSize = ImGui::GetContentRegionAvail();
-    
-    if (canvasSize.x < 100) canvasSize.x = 600;
-    if (canvasSize.y < 100) canvasSize.y = 500;
-
     ImDrawList* drawList = ImGui::GetWindowDrawList();
-    drawList->AddRectFilled(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y), IM_COL32(20, 20, 20, 255));
+    drawList->AddRectFilled(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y), IM_COL32(15, 15, 15, 255));
 
     float cellW = canvasSize.x / GRID_W;
     float cellH = canvasSize.y / GRID_H;
 
-    if (ImGui::IsWindowHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    if (ImGui::IsWindowHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetMousePos().y < canvasPos.y + canvasSize.y) {
         ImVec2 mousePos = ImGui::GetMousePos();
         int mouseX = (int)((mousePos.x - canvasPos.x) / cellW);
         int mouseY = (int)((mousePos.y - canvasPos.y) / cellH);
 
-        for (int dy = -1; dy <= 1; ++dy) {
-            for (int dx = -1; dx <= 1; ++dx) {
+        for (int dy = -brushSize; dy <= brushSize; ++dy) {
+            for (int dx = -brushSize; dx <= brushSize; ++dx) {
                 int tx = mouseX + dx;
                 int ty = mouseY + dy;
                 if (tx >= 0 && tx < GRID_W && ty >= 0 && ty < GRID_H) {
-                    grid[ty * GRID_W + tx] = currentElement;
+                    if (dx*dx + dy*dy <= brushSize * brushSize + 1) {
+                        grid[ty * GRID_W + tx] = currentElement;
+                    }
                 }
             }
         }
@@ -147,15 +218,81 @@ void RenderGUI() {
             if (type == EMPTY) continue;
 
             ImU32 color = IM_COL32(0, 0, 0, 255);
-            if (type == SAND) color = IM_COL32(220, 190, 80, 255);
-            else if (type == WATER) color = IM_COL32(50, 120, 240, 255);
-            else if (type == STONE) color = IM_COL32(130, 130, 130, 255);
+            switch (type) {
+                case SAND:  color = IM_COL32(220, 190, 80, 255); break;
+                case WATER: color = IM_COL32(50, 120, 240, 255); break;
+                case STONE: color = IM_COL32(130, 130, 130, 255); break;
+                case METAL: color = IM_COL32(180, 185, 200, 255); break;
+                case WOOD:  color = IM_COL32(140, 90, 40, 255); break;
+                case OIL:   color = IM_COL32(90, 80, 50, 255); break;
+                case ACID:  color = IM_COL32(50, 230, 50, 255); break;
+                case ICE:   color = IM_COL32(180, 230, 245, 255); break;
+                case FIRE:  color = IM_COL32(245, 100, 20, 255); break;
+            }
 
             ImVec2 pMin(canvasPos.x + x * cellW, canvasPos.y + y * cellH);
             ImVec2 pMax(pMin.x + cellW + 0.5f, pMin.y + cellH + 0.5f);
             drawList->AddRectFilled(pMin, pMax, color);
         }
     }
+
+    ImGui::Dummy(canvasSize);
+
+    ImGui::Spacing();
+
+    // 2. Нижняя панель инструментов и палитра материалов
+    ImGui::BeginChild("BottomToolbar", ImVec2(0, 0), true);
+    
+    ImGui::SetNextItemWidth(150.0f);
+    ImGui::SliderInt("Brush Size", &brushSize, 1, 6);
+    ImGui::SameLine(280);
+    if (ImGui::Button("Clear All Fields", ImVec2(130, 32))) {
+        ClearGrid();
+    }
+
+    ImGui::Spacing();
+
+    struct MaterialInfo {
+        const char* name;
+        int id;
+        ImVec4 color;
+    };
+
+    MaterialInfo materials[] = {
+        { "Eraser", EMPTY, ImVec4(0.2f, 0.2f, 0.2f, 1.0f) },
+        { "Sand", SAND, ImVec4(0.86f, 0.75f, 0.31f, 1.0f) },
+        { "Water", WATER, ImVec4(0.2f, 0.5f, 0.94f, 1.0f) },
+        { "Stone", STONE, ImVec4(0.5f, 0.5f, 0.5f, 1.0f) },
+        { "Metal", METAL, ImVec4(0.7f, 0.73f, 0.78f, 1.0f) },
+        { "Wood", WOOD, ImVec4(0.55f, 0.35f, 0.17f, 1.0f) },
+        { "Oil", OIL, ImVec4(0.35f, 0.3f, 0.2f, 1.0f) },
+        { "Acid", ACID, ImVec4(0.2f, 0.9f, 0.2f, 1.0f) },
+        { "Ice", ICE, ImVec4(0.7f, 0.9f, 0.95f, 1.0f) },
+        { "Fire", FIRE, ImVec4(0.95f, 0.4f, 0.1f, 1.0f) }
+    };
+
+    int i = 0;
+    for (auto& mat : materials) {
+        bool isSelected = (currentElement == mat.id);
+        ImGui::PushStyleColor(ImGuiCol_Button, mat.color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(mat.color.x * 1.2f, mat.color.y * 1.2f, mat.color.z * 1.2f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(mat.color.x * 0.8f, mat.color.y * 0.8f, mat.color.z * 0.8f, 1.0f));
+
+        char label[64];
+        snprintf(label, sizeof(label), "%s%s", mat.name, isSelected ? " [X]" : "");
+
+        if (ImGui::Button(label, ImVec2(85, 30))) {
+            currentElement = mat.id;
+        }
+        ImGui::PopStyleColor(3);
+
+        if (i < 9) {
+            ImGui::SameLine();
+        }
+        i++;
+    }
+
+    ImGui::EndChild();
 
     ImGui::End();
 
