@@ -1,4 +1,5 @@
-name: Build Windows EXE
+# .github/workflows/build.yml
+name: Build Windows EXE (OpenGL)
 
 on: [push, pull_request]
 
@@ -15,17 +16,16 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y mingw-w64 unzip curl
 
-    - name: Clone Dependencies
+    - name: Clone Dear ImGui
       run: |
         git clone --depth 1 https://github.com/ocornut/imgui.git imgui_src
-        git clone --depth 1 https://github.com/KhronosGroup/Vulkan-Headers.git vulkan_headers
 
     - name: Download GLFW for Windows
       run: |
         curl -L https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN64.zip -o glfw.zip
         unzip -q glfw.zip
 
-    - name: Compile for Windows
+    - name: Compile for Windows (OpenGL)
       run: |
         x86_64-w64-mingw32-g++ main.cpp gui.cpp \
             imgui_src/imgui.cpp \
@@ -33,15 +33,12 @@ jobs:
             imgui_src/imgui_tables.cpp \
             imgui_src/imgui_widgets.cpp \
             imgui_src/backends/imgui_impl_glfw.cpp \
-            imgui_src/backends/imgui_impl_vulkan.cpp \
+            imgui_src/backends/imgui_impl_opengl3.cpp \
             -Iimgui_src \
             -Iimgui_src/backends \
             -Iglfw-3.4.bin.WIN64/include \
-            -Ivulkan_headers/include \
             glfw-3.4.bin.WIN64/lib-mingw-w64/libglfw3.a \
             -o sandbox.exe \
-            -DVK_USE_PLATFORM_WIN32_KHR \
-            -lvulkan-1 \
             -lgdi32 -lopengl32 -limm32 -lole32 -luuid \
             -static-libgcc -static-libstdc++
 
